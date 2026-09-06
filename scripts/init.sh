@@ -13,31 +13,32 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL_DIR/RustDedicated_Data/Plugins
 
 # Install/update on boot unless skipped. Always install if the binary is
 # missing - e.g. a freshly provisioned or wiped PVC.
+# RUST_BRANCH is the user-facing beta branch var; map it onto the base
+# helper's STEAM_BETA (steamcmd_update already treats "public"/empty as the
+# default branch, so a plain assignment covers all cases).
+export STEAM_BETA="$RUST_BRANCH"
+
+RUN_UPDATE=false
 if [ "$SKIPUPDATE" != "true" ]; then
     LogInfo "Installing/updating Rust (app id $STEAMAPPID)..."
     if [ -n "$RUST_BRANCH" ] && [ "$RUST_BRANCH" != "public" ]; then
         LogInfo "Using beta branch: $RUST_BRANCH"
-        /home/steam/steamcmd/steamcmd.sh \
-            +force_install_dir "$INSTALL_DIR" \
-            +login anonymous \
-            +app_update "$STEAMAPPID" -beta "$RUST_BRANCH" validate \
-            +quit
-    else
-        /home/steam/steamcmd/steamcmd.sh \
-            +force_install_dir "$INSTALL_DIR" \
-            +login anonymous \
-            +app_update "$STEAMAPPID" validate \
-            +quit
     fi
+    RUN_UPDATE=true
 elif [ ! -x "$INSTALL_DIR/RustDedicated" ]; then
     LogWarn "SKIPUPDATE=true but RustDedicated is missing; installing anyway"
-    /home/steam/steamcmd/steamcmd.sh \
-        +force_install_dir "$INSTALL_DIR" \
-        +login anonymous \
-        +app_update "$STEAMAPPID" validate \
-        +quit
+    RUN_UPDATE=true
 else
     LogWarn "SKIPUPDATE=true, not updating the game"
+fi
+
+if [ "$RUN_UPDATE" = true ] && ! steamcmd_update "$STEAMAPPID" validate; then
+    if [ -x "$INSTALL_DIR/RustDedicated" ]; then
+        LogError "steamcmd update failed; continuing with the last installed build"
+    else
+        LogError "steamcmd update failed and $INSTALL_DIR/RustDedicated is missing"
+        exit 1
+    fi
 fi
 
 if [ ! -x "$INSTALL_DIR/RustDedicated" ]; then
