@@ -51,7 +51,7 @@ container exits with an error at boot.
 | Variable | Default | Required | Purpose |
 | --- | --- | --- | --- |
 | `SKIPUPDATE` | `false` | | Skip the SteamCMD update on boot (still installs if the binary is missing). |
-| `RUST_BRANCH` | (empty) | | Steam beta branch to install (e.g. `staging`); empty/`public` = default branch. |
+| `RUST_BRANCH` | (empty) | | Steam beta branch to install (e.g. `staging`); empty/`public` = default branch. Mapped onto the base image's `STEAM_BETA` internally; update retries/failure handling come from the base's `steamcmd_update` helper. |
 | `RUST_SERVER_IDENTITY` | `docker` | | Save directory name under `/steamcmd/rust/server/`. |
 | `RUST_SERVER_NAME` | `Rust Server [DOCKER]` | | Public server name. |
 | `RUST_SERVER_DESCRIPTION` | (default text) | | Server description. |
