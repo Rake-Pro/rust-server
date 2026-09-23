@@ -6,7 +6,7 @@ LABEL maintainer="greg@rake.pro" \
 # unzip is needed to extract Oxide's release archive (a .zip); bookworm-slim
 # doesn't ship it. Root only for this build layer - runtime user stays steam.
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends unzip \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends unzip \
  && rm -rf /var/lib/apt/lists/*
 
 # Rust (Facepunch) dedicated server app id
