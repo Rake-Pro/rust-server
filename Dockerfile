@@ -1,6 +1,6 @@
 FROM ghcr.io/rake-pro/steamcmd-base:latest
 
-LABEL maintainer="greg@rake.pro" \
+LABEL maintainer="Rake-Pro" \
       name="rake-pro/rust-server"
 
 # unzip is needed to extract Oxide's release archive (a .zip); bookworm-slim
