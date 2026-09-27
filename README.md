@@ -9,18 +9,49 @@ exclusive). Published to GitHub Container Registry:
 ghcr.io/rake-pro/rust-server
 ```
 
+## Fork
+
+This is a fork of [Didstopia/rust-server](https://github.com/Didstopia/rust-server)
+(MIT, original copyright retained in `LICENSE.md`). What changed:
+
+- Rebuilt `FROM ghcr.io/rake-pro/steamcmd-base`; the server runs entirely as
+  the nonroot `steam` user instead of root.
+- `RUST_RCON_PASSWORD` is required whenever RCON is enabled (`RUST_RCON_PORT`
+  non-empty); no baked-in default password.
+- Oxide and Carbon mod loading are mutually exclusive and validated at boot
+  (the container exits with an error if both are enabled).
+- Dropped upstream's heartbeat companion app, ad hoc `docker_run*.sh` /
+  `docker_build*.sh` helper scripts, and GitHub issue/PR templates.
+- Own semver release pipeline (`vX.Y.Z` git tags, Trivy-gated build; see
+  Tags / releases) in place of upstream's build scripts.
+
+## Base image
+
+| Item | Value |
+| --- | --- |
+| Base | `ghcr.io/rake-pro/steamcmd-base:latest` (SteamCMD, the `steam` user, `gosu`, shared `/opt/scripts/functions.sh` helpers) |
+| Runtime user | `steam` (nonroot) for the whole boot; no root phase in this image |
+| Extra packages | `unzip` (to extract Oxide's release archive) |
+
 ## Tags / releases
 
-CI (`.github/workflows/build.yml`) versions the image as semver:
+| Tag | Meaning |
+| --- | --- |
+| `X.Y.Z` | Immutable release, built from git tag `vX.Y.Z` |
+| `X.Y` | Latest patch of that minor |
+| `latest` | Latest release |
+| `sha-<short>` | Commit the image was built from |
 
-- Every push to `main` mints a patch-bumped `vX.Y.Z` git tag (`#major` /
-  `#minor` in the commit message bump those segments) and pushes
-  `vX.Y.Z` + `latest` to GHCR. No `sha-` tags on main builds.
-- The version tag and the image push happen only after the Trivy scan gate
-  passes (blocking on fixable CRITICALs; a HIGH+CRITICAL report also runs,
-  non-blocking).
-- PR builds are build+scan only (short-sha tag, never pushed).
-- Pin `vX.Y.Z` in deployments; `latest` is a convenience pointer.
+- `dev` is the integration branch (default); `ci.yml` builds on every push and PR
+  and publishes `:dev` / `:dev-<sha>` images on pushes to `dev`.
+- `sync-main.yml` opens a promotion PR from `dev` to `main`. Merging it (merge
+  commit) mints the next patch tag and `release.yml` builds, pushes and
+  Trivy-scans the image (blocking on fixable CRITICALs).
+- Label the promotion PR `release:minor` or `release:major` to change the bump.
+- `trivy-rescan.yml` re-scans the currently released image weekly
+  (CRITICAL+HIGH) so CVEs disclosed after release still surface; it does not
+  rebuild or push anything.
+- Pin `X.Y.Z` in deployments; `latest` is a convenience pointer.
 
 ## Run
 
@@ -39,7 +70,7 @@ On boot the server installs/updates via SteamCMD (app id `258550`) unless
 `SKIPUPDATE=true`, optionally installs Oxide or Carbon, then launches
 `RustDedicated`. The world and saves persist under the `/steamcmd` volume
 (install at `/steamcmd/rust`, identity saves at
-`/steamcmd/rust/server/<RUST_SERVER_IDENTITY>`) - this layout is unchanged
+`/steamcmd/rust/server/<RUST_SERVER_IDENTITY>`); this layout is unchanged
 from the previous image so existing world data keeps working.
 
 RCON is enabled by default (`RUST_RCON_PORT=28016`) and has no default
@@ -66,7 +97,7 @@ container exits with an error at boot.
 | `RUST_SERVER_QUERYPORT` | (empty) | | Steam query port (empty = engine default). |
 | `RUST_SERVER_STARTUP_ARGUMENTS` | `-batchmode -load -nographics +server.secure 1` | | Extra raw `RustDedicated` launch flags. |
 | `RUST_RCON_PORT` | `28016` | | RCON port. Set empty to disable RCON entirely. |
-| `RUST_RCON_PASSWORD` | (none) | **yes, if RCON enabled** | RCON password. No default - required whenever `RUST_RCON_PORT` is non-empty. |
+| `RUST_RCON_PASSWORD` | (none) | **yes, if RCON enabled** | RCON password. No default; required whenever `RUST_RCON_PORT` is non-empty. |
 | `RUST_RCON_WEB` | `1` | | Enable RustDedicated's native websocket RCON protocol. |
 | `RUST_APP_PORT` | `28082` | | Rust+ companion app port. |
 | `RUST_OXIDE_ENABLED` | `0` | | Install/update Oxide (uMod) at boot. Exclusive with `RUST_CARBON_ENABLED`. |
@@ -93,3 +124,7 @@ Only one mod framework may be enabled at a time. Setting both
 log an error and exit 1 at boot. Each is downloaded fresh from its official
 release URL over HTTPS on every boot when enabled (no version pinning); the
 resolved version is logged.
+
+## License
+
+MIT (original Didstopia copyright retained), see `LICENSE.md`.
